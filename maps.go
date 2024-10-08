@@ -14,4 +14,5 @@ func main() {
 	test, val2 := map2["yo"] // test is assigned the value, if value not present it is assigned 0, and val2 is assigned a boolean, true if key present else false
 	fmt.Println(test2, val1) // key present
 	fmt.Println(test, val2)  // key not present
+	// use maps.Equal(map1,map2) to check if two maps are equal
 }
