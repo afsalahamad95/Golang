@@ -13,7 +13,7 @@ type Course struct {
 }
 
 func main() {
-	encodeJson()
+	decodeJson()
 }
 
 func encodeJson() {
@@ -33,4 +33,25 @@ func encodeJson() {
 		panic(err)
 	}
 	fmt.Printf("%s\n", finalJson)
+}
+
+// consume a json data
+func decodeJson() {
+	jsonDataFromWeb := []byte(`
+	{
+			"Name": "React",
+			"Price": 999
+	}
+	`)
+
+	var someCourse Course
+	checkValid := json.Valid(jsonDataFromWeb)
+
+	if checkValid {
+		fmt.Println("Json valid!")
+		json.Unmarshal(jsonDataFromWeb, &someCourse) // result is stored to someCourse var here
+		fmt.Printf("%#v\n", someCourse)
+	} else {
+		fmt.Println("Invalid json!")
+	}
 }
