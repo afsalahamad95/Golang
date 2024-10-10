@@ -54,4 +54,14 @@ func decodeJson() {
 	} else {
 		fmt.Println("Invalid json!")
 	}
+
+	// if you want the result as key value pairs
+	var myData map[string]interface{}
+	json.Unmarshal(jsonDataFromWeb, &myData)
+	fmt.Println(myData)
+	fmt.Printf("%#v\n", myData)
+
+	for k, v := range myData {
+		fmt.Println("Key:", k, "Value:", v)
+	}
 }
