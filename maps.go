@@ -15,4 +15,14 @@ func main() {
 	fmt.Println(test2, val1) // key present
 	fmt.Println(test, val2)  // key not present
 	// use maps.Equal(map1,map2) to check if two maps are equal
+
+	// to delete from the map
+	fmt.Println(map1)
+	delete(map1, 5) // give the map and key to delete
+	fmt.Println(map1)
+
+	// loop through the maps - using range
+	for key, value := range map1 {
+		fmt.Println(key, ":", value)
+	}
 }
