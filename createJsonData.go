@@ -6,10 +6,10 @@ import (
 )
 
 type Course struct {
-	Name     string
+	Name     string `json:"coursename"` // the third parameter is a custom name parameter that will be displayed in the json fils
 	Price    int
-	password string
-	tags     []string
+	password string   `json:"-"`              // if you give - as the custom name, the value will not be displayed
+	tags     []string `json:"tags,omitempty"` // empty values are not displayed because of omitempty
 }
 
 func main() {
@@ -28,6 +28,7 @@ func encodeJson() {
 	// package the data as json data
 	// pass an interface here
 	finalJson, err := json.MarshalIndent(courses, "", "\t") // we're using marshal indent for making the result json readable
+	// the second arg is a prefix arg, best to leave it empty, otherwise in every line there will be the prefix string which you enter there
 	if err != nil {
 		panic(err)
 	}
