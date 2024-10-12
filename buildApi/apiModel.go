@@ -93,3 +93,21 @@ func createCourse(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(course)
 
 }
+
+func updateOneCourse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	// loop and get id, remove the id and add new id
+	for index, course := range courses {
+		if course.CourseId == params["id"] {
+			// remove id
+			courses = append(courses[:index], courses[index+1:]...) // variadic operation, so use ...
+			var course Course
+			json.NewDecoder(r.Body).Decode(&course) // write current data to variable
+			course.CourseId = params["id"]          // update the id as per user data
+			courses = append(courses, course)
+			json.NewEncoder(w).Encode(course) // notify the operation
+			return
+		}
+	}
+}
