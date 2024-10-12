@@ -46,6 +46,8 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("<h1>hello world</h1>")) // byte slice
 }
 
+// implement CRUD operations
+
 // return courses in json format
 func getAllCourses(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json") // data is sent in json format
@@ -110,4 +112,22 @@ func updateOneCourse(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+func deleteOneCourse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	params := mux.Vars(r)
+	for index, course := range courses {
+		if course.CourseId == params["id"] {
+			courses = append(courses[:index], courses[index+1:]...) // delete the course
+			json.NewEncoder(w).Encode(course)
+			return
+		}
+	}
+}
+
+func deleteAllCourses(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	courses = []Course{} // reassign
+	json.NewEncoder(w).Encode("delete successful")
 }
