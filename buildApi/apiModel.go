@@ -13,8 +13,21 @@ import (
 
 func main() {
 	router := mux.NewRouter()
-	router.HandleFunc("/", getOneCourse)
+	// seeding of data
+	courses = append(courses, Course{CourseId: "2", Name: "Go", Price: 999, Rating: 4.8, Author: &Author{FullName: "John wick", Website: "https://golang.dev"}})
+	courses = append(courses, Course{CourseId: "3", Name: "Flutter", Price: 999, Rating: 4.8, Author: &Author{FullName: "John wick", Website: "https://golang.dev"}})
+
+	// routing
+	router.HandleFunc("/", serveHome).Methods("GET")
+	router.HandleFunc("/courses", getAllCourses).Methods("GET")
+	router.HandleFunc("/course/{id}", getOneCourse).Methods("GET") // pass the id in params through /{} syntax
+	router.HandleFunc("/delete-all", deleteAllCourses).Methods("DELETE")
+	router.HandleFunc("/create", createCourse).Methods("POST")
+	router.HandleFunc("/update/{id}", updateOneCourse).Methods("PUT")
+
+	// listen to port
 	log.Fatal(http.ListenAndServe(":4000", router))
+
 }
 
 // course file model -> separate file
@@ -39,6 +52,8 @@ func (c *Course) isEmpty() bool {
 	// return c.CourseId == "" && c.Name == ""
 	return c.Name == ""
 }
+
+// controllers -> separate fils
 
 // define a route
 func serveHome(w http.ResponseWriter, r *http.Request) {
