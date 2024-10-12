@@ -3,7 +3,10 @@ package main
 import (
 	"encoding/json"
 	"log"
+	"math/rand"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -33,7 +36,8 @@ var courses []Course
 
 // middleware, helpers -> separate file
 func (c *Course) isEmpty() bool {
-	return c.CourseId == "" && c.Name == ""
+	// return c.CourseId == "" && c.Name == ""
+	return c.Name == ""
 }
 
 // define a route
@@ -64,4 +68,28 @@ func getOneCourse(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode("No course found with given id")
 	return
+}
+
+func createCourse(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	// if body is empty
+	if r.Body == nil {
+		json.NewEncoder(w).Encode("Empty body detected - please send some data")
+		return
+	}
+	// if data sent like {}
+	var course Course
+	json.NewDecoder(r.Body).Decode(&course)
+	if course.isEmpty() {
+		json.NewEncoder(w).Encode("No data detected")
+		return
+	}
+
+	// generate unique id, convert to string
+	// append course to courses
+	rand.Seed(time.Now().UnixNano())
+	course.CourseId = strconv.Itoa(rand.Intn(100)) // convert to string
+	courses = append(courses, course)
+	json.NewEncoder(w).Encode(course)
+
 }
