@@ -6,6 +6,8 @@ import (
 	"log"
 
 	"github.com/Thenameisafsal/mongoapi/model"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt/options"
@@ -46,4 +48,15 @@ func insertOneMovie(movie model.Netflix) {
 	}
 	fmt.Println(inserted)
 	fmt.Println("insert successful iwth id:", inserted.InsertedID)
+}
+
+func updateOneRecord(movieId string) {
+	id, _ := primitive.ObjectIDFromHex(movieId)
+	filter := bson.M{"_id": id}
+	update := bson.M{"$set": bson.M{"watched": true}}
+	result, err := collection.UpdateOne(context.Background(), filter, update)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("modified count:", result.ModifiedCount)
 }
