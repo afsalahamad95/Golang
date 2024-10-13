@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/Thenameisafsal/mongoapi/model"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt/options"
 )
 
 const connectionString = "mongodb+srv://golang:I@mAfsal05@cluster0.1bz0k.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
@@ -33,4 +35,15 @@ func init() {
 
 	// collection instance
 	fmt.Println("collection instance ready")
+}
+
+// mongodb helpers
+// insert 1 record
+func insertOneMovie(movie model.Netflix) {
+	inserted, err := collection.InsertOne(context.Background(), movie)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(inserted)
+	fmt.Println("insert successful iwth id:", inserted.InsertedID)
 }
