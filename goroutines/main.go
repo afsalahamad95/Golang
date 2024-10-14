@@ -2,57 +2,39 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"sync"
 )
 
-// normal method -> functions are executed line by line -> no parallelism
-// func main() {
-// 	greeter("hello")
-// 	greeter("world")
-// }
-
-// func greeter(name string) {
-// 	for i := 0; i < 5; i++ {
-// 		fmt.Println(name)
-// 	}
-// }
-
-// func main() {
-// 	// use go keyword to create threads
-// 	// greeter("hello")
-// 	// go greeter("world")
-// 	// here second one is not printed because we created a thread, but never waited for it to execute
-// 	// to make it work, add time.sleep() in the function, which is one of the ways to execute it
-// 	go greeter("hello")
-// 	greeter("world")
-// }
-
-// func greeter(name string) {
-// 	for i := 0; i < 5; i++ {
-// 		time.Sleep(2 * time.Millisecond)
-// 		fmt.Println(name)
-// 	}
-// }
-
-// create a waitgroup - it is a modified version of time.sleep() , this will wait till all threads in waitgroup are executed -> and these are usually pointers
-var wg sync.WaitGroup
-
 func main() {
-	websites := []string{"https://go.dev", "https://google.com", "https://youtube.com", "https://github.com"}
-	for _, site := range websites {
-		go getStatusCode(site) // launch threads
-		wg.Add(1)
-	}
-	wg.Wait() // used after adding all threads
-}
 
-func getStatusCode(endpoint string) {
-
-	defer wg.Done() // report that thread is executed
-	res, err := http.Get(endpoint)
-	if err != nil {
-		fmt.Println("There was a problem")
-	}
-	fmt.Printf("%d Status code\n", res.StatusCode)
+	var score = []int{0}
+	wg := &sync.WaitGroup{}
+	mutex := &sync.Mutex{}
+	// goroutines
+	wg.Add(1)
+	go func(wg *sync.WaitGroup, mutex *sync.Mutex) {
+		fmt.Println("one")
+		mutex.Lock()
+		score = append(score, 1)
+		mutex.Unlock()
+		wg.Done()
+	}(wg, mutex)
+	wg.Add(1)
+	go func(wg *sync.WaitGroup, mutex *sync.Mutex) {
+		fmt.Println("two")
+		mutex.Lock()
+		score = append(score, 2)
+		mutex.Unlock()
+		wg.Done()
+	}(wg, mutex)
+	wg.Add(1)
+	go func(wg *sync.WaitGroup, mutex *sync.Mutex) {
+		fmt.Println("three")
+		mutex.Lock()
+		score = append(score, 3)
+		mutex.Unlock()
+		wg.Done()
+	}(wg, mutex)
+	wg.Wait()
+	fmt.Println(score)
 }
