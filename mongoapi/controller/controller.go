@@ -11,12 +11,11 @@ import (
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/x/mongo/driver/mongocrypt/options"
 )
 
-const connectionString = "mongodb+srv://golang:I@mAfsal05@cluster0.1bz0k.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
+const connectionString = "mongodb+srv://golang:afsalahamad@cluster0.1bz0k.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
 const dbName = "netflix"
 const colName = "watchlist"
 
