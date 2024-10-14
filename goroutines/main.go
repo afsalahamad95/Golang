@@ -10,6 +10,7 @@ func main() {
 	var score = []int{0}
 	wg := &sync.WaitGroup{}
 	mutex := &sync.Mutex{}
+	// you can use &sync.RWMutex{} as well
 	// goroutines
 	wg.Add(1)
 	go func(wg *sync.WaitGroup, mutex *sync.Mutex) {
