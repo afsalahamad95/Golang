@@ -21,7 +21,7 @@ func main() {
 	fmt.Println("1 second passed")
 
 	// to reset the timer, use the Reset method
-	timer.Reset(2 * time.Second) // timer will now expire in 2 seconds
+	timer.Reset(10 * time.Second) // timer will now expire in 2 seconds
 	<-timer.C
 	timer.Stop()
 	fmt.Println("Timer stopped")
