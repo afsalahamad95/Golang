@@ -19,4 +19,10 @@ func main() {
 	// returns a channel that will send the current time after specified timeout without creating a timer
 	<-time.After(1 * time.Second)
 	fmt.Println("1 second passed")
+
+	// to reset the timer, use the Reset method
+	timer.Reset(2 * time.Second) // timer will now expire in 2 seconds
+	<-timer.C
+	timer.Stop()
+	fmt.Println("Timer stopped")
 }
