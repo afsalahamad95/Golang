@@ -2,14 +2,21 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 )
 
 func crawler(id int, works <-chan string, stats chan<- int) {
 	for url := range works {
 		time.Sleep(time.Second)
-		fmt.Println(id, "crawled, status 200 OK", url)
-		stats <- 200
+		resp, err := http.Get(url)
+		if err != nil {
+			fmt.Println(id, "crawled, status 400")
+			stats <- 400
+		} else {
+			fmt.Println(id, "crawled, status", resp.StatusCode)
+			stats <- 200
+		}
 	}
 }
 func main() {
