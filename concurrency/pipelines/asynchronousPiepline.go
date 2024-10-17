@@ -40,6 +40,7 @@ func main() {
 	time.Sleep(1 * time.Second)
 	close(datachannel)
 	close(squaredChannel)
+	// stage 3
 	for i := range squaredChannel {
 		fmt.Println(i)
 	}
