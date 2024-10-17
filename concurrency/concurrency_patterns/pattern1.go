@@ -24,5 +24,6 @@ func main() {
 	time.Sleep(3 * time.Second)
 	// stop after 3 seconds
 	close(done)
+	// the close will send a signal to the loop and it will terminate
 
 }
