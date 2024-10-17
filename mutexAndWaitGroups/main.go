@@ -35,24 +35,23 @@ import (
 // 	}
 // }
 
-// create a waitgroup - it is a modified version of time.sleep() , this will wait till all threads in waitgroup are executed -> and these are usually pointers
-var wg sync.WaitGroup
-
 var mutex sync.Mutex // mutex variable -> usually a pointer
 
 var signals = []string{"test"}
 
 func main() {
 	websites := []string{"https://go.dev", "https://google.com", "https://youtube.com", "https://github.com"}
+	// create a waitgroup - it is a modified version of time.sleep() , this will wait till all threads in waitgroup are executed -> and these are usually pointers
+	var wg sync.WaitGroup
 	for _, site := range websites {
-		go getStatusCode(site) // launch threads
+		go getStatusCode(site, &wg) // launch threads
 		wg.Add(1)
 	}
 	wg.Wait() // used after adding all threads to ensure main func waits for threads
 	fmt.Println(signals)
 }
 
-func getStatusCode(endpoint string) {
+func getStatusCode(endpoint string, wg *sync.WaitGroup) {
 
 	defer wg.Done() // report that thread is executed
 	res, err := http.Get(endpoint)
