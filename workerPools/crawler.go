@@ -11,10 +11,10 @@ func crawler(id int, works <-chan string, stats chan<- int) {
 		time.Sleep(time.Second)
 		resp, err := http.Get(url)
 		if err != nil {
-			fmt.Println(id, "crawled, status 400")
+			fmt.Println(id, "crawled, status 400", url)
 			stats <- 400
 		} else {
-			fmt.Println(id, "crawled, status", resp.StatusCode)
+			fmt.Println(id, "crawled, status", resp.StatusCode, url)
 			stats <- 200
 		}
 	}
