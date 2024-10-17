@@ -51,6 +51,7 @@ func main() {
 	fmt.Println(signals)
 }
 
+// always pass reference of wait group if explicitly passed through functions
 func getStatusCode(endpoint string, wg *sync.WaitGroup) {
 
 	defer wg.Done() // report that thread is executed
