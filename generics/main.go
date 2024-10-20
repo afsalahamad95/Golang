@@ -10,6 +10,7 @@ func generic[age int | float64](myAge age) {
 // here, any parameters can be passed - generic function
 func genericReal[age any](myAge age) {
 	fmt.Println(myAge)
+	// type cast to make any operations specific to the type -> will not work for "any" type
 }
 func main() {
 	var age int = 57
