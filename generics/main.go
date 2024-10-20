@@ -6,9 +6,14 @@ import "fmt"
 func generic[age int | float64](myAge age) {
 	fmt.Println(myAge)
 }
+
+// here, any parameters can be passed - generic function
+func genericReal[age any](myAge age) {
+	fmt.Println(myAge)
+}
 func main() {
 	var age int = 57
 	var age2 float64 = 56.7
 	generic(age)
-	generic(age2)
+	genericReal(age2)
 }
