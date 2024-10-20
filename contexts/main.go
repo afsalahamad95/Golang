@@ -28,6 +28,7 @@ func main() {
 	// to prevent that, use timeout
 	cont, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel() // cancel after time limit
+	// this cancel can be used to terminate the contex
 	for {
 		select {
 		case <-cont.Done():
