@@ -1,46 +1,49 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/joho/godotenv"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-type Repository struct {
-	DB *gorm.DB
-}
-type Book struct {
-	Author    string `json:"author"`
-	Publisher string `json:"publisher"`
-	Title     string `json:"title"`
+type book struct {
+	ID     int `gorm:"primaryKey"` // set as primary key in postgres schema
+	Title  string
+	Author string
 }
 
-func (r *Repository) SetupRoutes(app *fiber.App) {
-	api := app.Group("/api")
-	api.Post("/create_books", r.CreateBook)
-	api.Delete("delete_book/:id", r.DeleteBook)
-	api.Get("/get_books/:id", r.GetBook)
-	api.Get("/get_books", r.GetBooks)
+const (
+	host     = "localhost"
+	port     = 5432
+	user     = "postgres"
+	password = "50022021"
+	dbname   = "gorm"
+)
 
-}
+var connectionString string = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 
-func (r *Repository) CreateBook(context *fiber.Ctx) error {
-	book := Book{}
-	context.BodyParser(&book)
-}
+// db parameters
+
 func main() {
-	err := godotenv.Load(".env")
+	db, err := gorm.Open(postgres.Open(connectionString), &gorm.Config{})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("failed to connect database")
 	}
-	db, err := storage.NewConnection(config)
-	if err != nil {
-		log.Fatal(err)
-	}
-	app := fiber.New()
-	r := Repository{DB: db}
-	r.SetupRoutes(app)
-	app.Listen(":4000")
+
+	// make changes to schema, like you've defined in struct
+	db.AutoMigrate(&book{})
+	db.Create(&book{Title: "The Great Gatsby", Author: "F. Scott Fitzgerald"})
+
+	// read from db
+	var b book
+	db.First(&b, 1)
+	fmt.Println(b)
+
+	// update the book
+	db.Model(&b).Update("Author", "JK Rowling")
+
+	// delete the book
+	db.Delete(&b)
 }
