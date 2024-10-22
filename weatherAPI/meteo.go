@@ -16,12 +16,12 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// const a float64 = 52.52
-//
-//	const b float64 = 13.41
-//	var api string = fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&hourly=temperature_2m", a, b)
-const api = "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&hourly=temperature_2m"
+// var a, b int
+// var api string
 
+var api string = "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&hourly=temperature_2m"
+
+// api = fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&hourly=temperature_2m", a, b)
 const connectionString = "mongodb+srv://afsal:afsal12345@weatherapi.7xuwg.mongodb.net/?retryWrites=true&w=majority&appName=weatherAPI"
 const dbName = "weather"
 const colName = "weatherdata"
@@ -43,7 +43,7 @@ type HourlyData struct {
 
 func Router() *mux.Router {
 	router := mux.NewRouter()
-	router.HandleFunc("/", getFromDb).Methods("GET")
+	router.HandleFunc("/", getFromDb)
 	return router
 }
 
@@ -55,7 +55,7 @@ func controller() {
 	var Apiresponse apiresponse
 	parse, _ := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(parse, &Apiresponse)
-	fmt.Println(parse)
+	fmt.Println(string(parse))
 	fmt.Println("update starting")
 	insertWeather(Apiresponse)
 	fmt.Println("Writing to database")
@@ -93,11 +93,20 @@ func autoupdatedb() {
 		fmt.Println("auto update triggered")
 	}
 }
+
+type temp struct {
+	Lat string
+	Lon string
+}
+
 func getFromDb(w http.ResponseWriter, r *http.Request) {
+	var test temp
+	json.NewDecoder(r.Body).Decode(&test)
+	updateApi(test.Lat, test.Lon)
 	if lastInsertedId == primitive.NilObjectID {
 		fmt.Println("No data to fetch,fetching from api")
+
 		controller()
-	} else {
 		filter := bson.M{"_id": lastInsertedId}
 		var result apiresponse
 		err := collection.FindOne(context.Background(), filter).Decode(&result)
@@ -105,7 +114,21 @@ func getFromDb(w http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 		json.NewEncoder(w).Encode(result)
+		fmt.Println(test)
+	} else {
+		fmt.Println("return existing instance")
+		filter := bson.M{"_id": lastInsertedId}
+		var result apiresponse
+		err := collection.FindOne(context.Background(), filter).Decode(&result)
+		if err != nil {
+			log.Fatal(err)
+		}
+		json.NewEncoder(w).Encode(result)
+		controller()
+		fmt.Println(test)
+
 	}
+
 }
 
 func main() {
@@ -122,4 +145,8 @@ func main() {
 	time.Sleep(1 * time.Second)
 	router := Router()
 	http.ListenAndServe(":4000", router)
+}
+
+func updateApi(a, b string) {
+	api = fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&hourly=temperature_2m", a, b)
 }
