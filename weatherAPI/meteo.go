@@ -7,38 +7,87 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// var a, b int
-// var api string
+var api string = "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,visibility,wind_speed_10m"
 
-var api string = "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&hourly=temperature_2m"
-
-// api = fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&hourly=temperature_2m", a, b)
+// api = fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f&hourly=LocationDetailserature_2m", a, b)
 const connectionString = "mongodb+srv://afsal:afsal12345@weatherapi.7xuwg.mongodb.net/?retryWrites=true&w=majority&appName=weatherAPI"
 const dbName = "weather"
 const colName = "weatherdata"
 
-type THourly_units struct {
-	Time           string `json:"time"`
-	Temperature_2m string `json:"temperature_2m"`
+type CurrentUnits struct {
+	Time               string `json:"time"`
+	Interval           string `json:"interval"`
+	Temperature2m      string `json:"temperature_2m"`
+	RelativeHumidity2m string `json:"relative_humidity_2m"`
+	WeatherCode        string `json:"weather_code"`
+	SurfacePressure    string `json:"surface_pressure"`
+	WindSpeed10m       string `json:"wind_speed_10m"`
 }
+
+type Current struct {
+	Time               string  `json:"time"`
+	Interval           int     `json:"interval"`
+	Temperature2m      float64 `json:"temperature_2m"`
+	RelativeHumidity2m int     `json:"relative_humidity_2m"`
+	WeatherCode        int     `json:"weather_code"`
+	SurfacePressure    float64 `json:"surface_pressure"`
+	WindSpeed10m       float64 `json:"wind_speed_10m"`
+}
+
+type THourly_units struct {
+	Time               string `json:"time"`
+	Temperature2m      string `json:"temperature_2m"`
+	RelativeHumidity2m string `json:"relative_humidity_2m"`
+	WeatherCode        string `json:"weather_code"`
+	SurfacePressure    string `json:"surface_pressure"`
+	Visibility         string `json:"visibility"`
+	WindSpeed10m       string `json:"wind_speed_10m"`
+}
+
 type apiresponse struct {
-	Latitude     float64       `json:"latitude"`
-	Longitude    float64       `json:"longitude"`
-	Hourly_units THourly_units `json:"hourly_units"`
-	Hourly       HourlyData    `json:"hourly"`
+	Latitude             float64       `json:"latitude"`
+	Longitude            float64       `json:"longitude"`
+	GenerationtimeMs     float64       `json:"generationtime_ms"`
+	UtcOffsetSeconds     int           `json:"utc_offset_seconds"`
+	Timezone             string        `json:"timezone"`
+	TimezoneAbbreviation string        `json:"timezone_abbreviation"`
+	Elevation            float64       `json:"elevation"`
+	CurrentUnits         CurrentUnits  `json:"current_units"`
+	Current              Current       `json:"current"`
+	Hourly_units         THourly_units `json:"hourly_units"`
+	Hourly               HourlyData    `json:"hourly"`
+}
+type finalresponse struct {
+	Latitude             float64       `json:"latitude" bson:"latitude"`
+	Longitude            float64       `json:"longitude" bson:"longitude"`
+	GenerationtimeMs     float64       `json:"generationtime_ms" bson:"generationtime_ms"`
+	UtcOffsetSeconds     int           `json:"utc_offset_seconds" bson:"utc_offset_seconds"`
+	Timezone             string        `json:"timezone" bson:"timezone"`
+	TimezoneAbbreviation string        `json:"timezone_abbreviation" bson:"timezone_abbreviation"`
+	Elevation            float64       `json:"elevation" bson:"elevation"`
+	CurrentUnits         CurrentUnits  `json:"current_units" bson:"current_units"`
+	Current              Current       `json:"current" bson:"current"`
+	Hourly_units         THourly_units `json:"hourly_units" bson:"hourly_units"`
+	Hourly               HourlyData    `json:"hourly" bson:"hourly"`
+	RecordTime           time.Time     `json:"recordtime" bson:"recordtime"`
 }
 type HourlyData struct {
-	Time          []string  `json:"time"`
-	Temperature2m []float64 `json:"temperature_2m"`
+	Time               []string  `json:"time"`
+	Temperature2m      []float64 `json:"temperature_2m"`
+	RelativeHumidity2m []int     `json:"relative_humidity_2m"`
+	WeatherCode        []int     `json:"weather_code"`
+	SurfacePressure    []float64 `json:"surface_pressure"`
+	Visibility         []float64 `json:"visibility"`
+	WindSpeed10m       []float64 `json:"wind_speed_10m"`
 }
 
 func Router() *mux.Router {
@@ -47,7 +96,7 @@ func Router() *mux.Router {
 	return router
 }
 
-func controller() {
+func refreshDB() {
 	resp, err := http.Get(api)
 	if err != nil {
 		log.Fatal(err)
@@ -55,26 +104,40 @@ func controller() {
 	var Apiresponse apiresponse
 	parse, _ := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(parse, &Apiresponse)
-	fmt.Println(string(parse))
 	fmt.Println("update starting")
-	insertWeather(Apiresponse)
+	FinalResponse := convertToFinalResponse(Apiresponse)
+	insertWeather(FinalResponse)
 	fmt.Println("Writing to database")
 	fmt.Println("write success")
 	defer resp.Body.Close()
 }
+func convertToFinalResponse(Apiresponse apiresponse) finalresponse {
+	return finalresponse{
+		Latitude:             Apiresponse.Latitude,
+		Longitude:            Apiresponse.Longitude,
+		GenerationtimeMs:     Apiresponse.GenerationtimeMs,
+		UtcOffsetSeconds:     Apiresponse.UtcOffsetSeconds,
+		Timezone:             Apiresponse.Timezone,
+		TimezoneAbbreviation: Apiresponse.TimezoneAbbreviation,
+		Elevation:            Apiresponse.Elevation,
+		CurrentUnits:         Apiresponse.CurrentUnits,
+		Current:              Apiresponse.Current,
+		Hourly_units:         Apiresponse.Hourly_units,
+		Hourly:               Apiresponse.Hourly,
+		RecordTime:           time.Now(),
+	}
+}
 
 var collection *mongo.Collection
-var lastInsertedId primitive.ObjectID = primitive.NilObjectID
 
-func insertWeather(data apiresponse) {
-	deleteAllRecords()
+func insertWeather(data finalresponse) {
+	// deleteAllRecords()
 	status, err := collection.InsertOne(context.Background(), data)
 	if err != nil {
-		fmt.Println("error occured")
+		fmt.Println("error occured during insertion")
 		return
 	}
 	fmt.Println("updated successfully with id:", status.InsertedID)
-	lastInsertedId = status.InsertedID.(primitive.ObjectID)
 }
 
 func deleteAllRecords() {
@@ -85,57 +148,44 @@ func deleteAllRecords() {
 	fmt.Println("Deleted", res.DeletedCount, "files")
 }
 func autoupdatedb() {
-	ticker := time.NewTicker(15 * time.Minute)
+	ticker := time.NewTicker(20 * time.Minute)
 	defer ticker.Stop()
 	for {
 		<-ticker.C
-		controller()
+		// non blocking ticker
+		refreshDB()
+		deleteOldRecords()
 		fmt.Println("auto update triggered")
 	}
 }
 
-type temp struct {
+type LocationDetails struct {
 	Lat string
 	Lon string
 }
 
 func getFromDb(w http.ResponseWriter, r *http.Request) {
-	var test temp
-	json.NewDecoder(r.Body).Decode(&test)
-	updateApi(test.Lat, test.Lon)
-	if lastInsertedId == primitive.NilObjectID {
-		fmt.Println("No data to fetch,fetching from api")
-
-		controller()
-		filter := bson.M{"_id": lastInsertedId}
-		var result apiresponse
-		err := collection.FindOne(context.Background(), filter).Decode(&result)
-		if err != nil {
-			log.Fatal(err)
-		}
-		json.NewEncoder(w).Encode(result)
-		fmt.Println(test)
-	} else {
-		fmt.Println("return existing instance")
-		filter := bson.M{"_id": lastInsertedId}
-		var result apiresponse
-		err := collection.FindOne(context.Background(), filter).Decode(&result)
-		if err != nil {
-			log.Fatal(err)
-		}
-		json.NewEncoder(w).Encode(result)
-		controller()
-		fmt.Println(test)
-
+	var location LocationDetails
+	w.Header().Set("Content-Type", "application/json")
+	json.NewDecoder(r.Body).Decode(&location)
+	latitude, _ := strconv.ParseFloat(location.Lat, 64)
+	longitude, _ := strconv.ParseFloat(location.Lon, 64)
+	findOptions := options.FindOne()
+	updateApi(location.Lat, location.Lon)
+	var res finalresponse
+	err := collection.FindOne(context.Background(), bson.M{"latitude": latitude, "longitude": longitude}, findOptions).Decode(&res)
+	if err == mongo.ErrNoDocuments {
+		refreshDB()
 	}
-
+	err = collection.FindOne(context.Background(), bson.M{"latitude": latitude, "longitude": longitude}, findOptions).Decode(&res)
+	json.NewEncoder(w).Encode(res)
 }
 
 func main() {
 	// let's connect to mongodb
 	fmt.Println("Connecting to MongoDB")
 	clientOptions := options.Client().ApplyURI(connectionString)
-	client, err := mongo.Connect(context.TODO(), clientOptions)
+	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -148,5 +198,16 @@ func main() {
 }
 
 func updateApi(a, b string) {
-	api = fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&hourly=temperature_2m", a, b)
+	// update api with new latitude and longitude
+	api = fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,visibility,wind_speed_10m", a, b)
+}
+
+func deleteOldRecords() {
+	twentyMinutesAgo := time.Now().Add(-20 * time.Minute)
+	filter := bson.M{"recordtime": bson.M{"$lt": twentyMinutesAgo}}
+	status, err := collection.DeleteMany(context.Background(), filter)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(status.DeletedCount, "files deleted")
 }
