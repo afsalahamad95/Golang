@@ -191,7 +191,6 @@ func main() {
 	collection = client.Database(dbName).Collection(colName)
 	fmt.Println("Connection success!")
 	go autoupdatedb() // auto update db as per time
-	time.Sleep(1 * time.Second)
 	router := Router()
 	http.ListenAndServe(":4000", router)
 }
