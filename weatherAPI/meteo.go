@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -95,7 +94,7 @@ func Router() *mux.Router {
 	return router
 }
 
-func refreshDB() {
+func refreshDB() finalresponse {
 	resp, err := http.Get(api)
 	if err != nil {
 		log.Fatal(err)
@@ -105,10 +104,12 @@ func refreshDB() {
 	err = json.Unmarshal(parse, &Apiresponse)
 	fmt.Println("update starting")
 	FinalResponse := convertToFinalResponse(Apiresponse)
-	insertWeather(FinalResponse)
+	insertRes := insertWeather(FinalResponse)
+	// fmt.Println(insertRes, "status from insertion")
 	fmt.Println("Writing to database")
 	fmt.Println("write success")
 	defer resp.Body.Close()
+	return insertRes
 }
 func convertToFinalResponse(Apiresponse apiresponse) finalresponse {
 	return finalresponse{
@@ -129,14 +130,15 @@ func convertToFinalResponse(Apiresponse apiresponse) finalresponse {
 
 var collection *mongo.Collection
 
-func insertWeather(data finalresponse) {
+func insertWeather(data finalresponse) finalresponse {
 	// deleteAllRecords()
 	status, err := collection.InsertOne(context.Background(), data)
 	if err != nil {
 		fmt.Println("error occured during insertion")
-		return
+		panic(err)
 	}
 	fmt.Println("updated successfully with id:", status.InsertedID)
+	return data
 }
 
 func deleteAllRecords() {
@@ -159,24 +161,27 @@ func autoupdatedb() {
 }
 
 type LocationDetails struct {
-	Lat string
-	Lon string
+	Lat float64
+	Lon float64
 }
 
+// TODO: retrieve from db
 func getFromDb(w http.ResponseWriter, r *http.Request) {
 	var location LocationDetails
 	w.Header().Set("Content-Type", "application/json")
 	json.NewDecoder(r.Body).Decode(&location)
-	latitude, _ := strconv.ParseFloat(location.Lat, 64)
-	longitude, _ := strconv.ParseFloat(location.Lon, 64)
+	latitude := location.Lat
+	longitude := location.Lon
 	findOptions := options.FindOne()
-	updateApi(location.Lat, location.Lon)
+	updateApi(latitude, longitude)
 	var res finalresponse
 	err := collection.FindOne(context.Background(), bson.M{"latitude": latitude, "longitude": longitude}, findOptions).Decode(&res)
 	if err == mongo.ErrNoDocuments {
-		refreshDB()
+		fmt.Println("call from api, since not found in database")
+		res = refreshDB()
+	} else {
+		fmt.Println("found match in db")
 	}
-	err = collection.FindOne(context.Background(), bson.M{"latitude": latitude, "longitude": longitude}, findOptions).Decode(&res)
 	json.NewEncoder(w).Encode(res)
 }
 
@@ -195,12 +200,13 @@ func main() {
 	http.ListenAndServe(":4000", router)
 }
 
-func updateApi(a, b string) {
+func updateApi(a, b float64) {
 	// update api with new latitude and longitude
-	api = fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,visibility,wind_speed_10m", a, b)
+	api = fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,visibility,wind_speed_10m", a, b)
 }
 
 func deleteOldRecords() {
+	fmt.Println("deleting old records now")
 	twentyMinutesAgo := time.Now().Add(-20 * time.Minute)
 	filter := bson.M{"recordtime": bson.M{"$lt": twentyMinutesAgo}}
 	status, err := collection.DeleteMany(context.Background(), filter)
