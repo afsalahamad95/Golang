@@ -175,6 +175,7 @@ func getFromDb(w http.ResponseWriter, r *http.Request) {
 	json.NewDecoder(r.Body).Decode(&location)
 	latitude := location.Lat
 	longitude := location.Lon
+	fmt.Println(latitude, longitude)
 	findOptions := options.FindOne()
 	updateApi(latitude, longitude)
 	var res finalresponse
