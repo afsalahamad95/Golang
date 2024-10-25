@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -100,7 +99,7 @@ func Router() *mux.Router {
 func refreshDB() finalresponse {
 	resp, err := http.Get(api)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Errorf("an error occurred when fetching the data")
 	}
 	var Apiresponse apiresponse
 	parse, _ := ioutil.ReadAll(resp.Body)
@@ -137,8 +136,7 @@ func insertWeather(data finalresponse) finalresponse {
 	// deleteAllRecords()
 	status, err := collection.InsertOne(context.Background(), data)
 	if err != nil {
-		fmt.Println("error occured during insertion")
-		panic(err)
+		fmt.Errorf("error occured during insertion")
 	}
 	fmt.Println("updated successfully with id:", status.InsertedID)
 	return data
@@ -147,7 +145,7 @@ func insertWeather(data finalresponse) finalresponse {
 func deleteAllRecords() {
 	res, err := collection.DeleteMany(context.Background(), bson.D{{}})
 	if err != nil {
-		log.Fatal(err)
+		fmt.Errorf("error occurred when deleting records")
 	}
 	fmt.Println("Deleted", res.DeletedCount, "files")
 }
@@ -168,7 +166,6 @@ type LocationDetails struct {
 	Lon float64
 }
 
-// TODO: retrieve from db
 func getFromDb(w http.ResponseWriter, r *http.Request) {
 	var location LocationDetails
 	w.Header().Set("Content-Type", "application/json")
@@ -181,7 +178,7 @@ func getFromDb(w http.ResponseWriter, r *http.Request) {
 	var res finalresponse
 	err := collection.FindOne(context.Background(), bson.M{"latitude": latitude, "longitude": longitude}, findOptions).Decode(&res)
 	if err == mongo.ErrNoDocuments {
-		fmt.Println("call from api, since not found in database")
+		fmt.Println("call forwarding to api, since not found in database")
 		res = refreshDB()
 	} else {
 		fmt.Println("found match in db")
@@ -195,7 +192,7 @@ func main() {
 	clientOptions := options.Client().ApplyURI(connectionString)
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Errorf("error occurred during connection with database")
 	}
 	collection = client.Database(dbName).Collection(colName)
 	fmt.Println("Connection success!")
