@@ -99,7 +99,7 @@ func Router() *mux.Router {
 func refreshDB() finalresponse {
 	resp, err := http.Get(api)
 	if err != nil {
-		fmt.Errorf("an error occurred when fetching the data")
+		fmt.Println("an error occurred when fetching the data", err)
 	}
 	var Apiresponse apiresponse
 	parse, _ := ioutil.ReadAll(resp.Body)
@@ -136,7 +136,17 @@ func insertWeather(data finalresponse) finalresponse {
 	// deleteAllRecords()
 	status, err := collection.InsertOne(context.Background(), data)
 	if err != nil {
-		fmt.Errorf("error occured during insertion")
+		if mongo.IsDuplicateKeyError(err) {
+			fmt.Println("insert operation aborted due to duplicate entry, returning existing entry")
+			var existingRec finalresponse
+			search_lat := data.Latitude
+			search_lon := data.Longitude
+			err := collection.FindOne(context.Background(), bson.M{"latitude": search_lat, "longitude": search_lon}).Decode(existingRec)
+			if err == nil {
+				return existingRec
+			}
+		}
+		return data
 	}
 	fmt.Println("updated successfully with id:", status.InsertedID)
 	return data
@@ -145,7 +155,7 @@ func insertWeather(data finalresponse) finalresponse {
 func deleteAllRecords() {
 	res, err := collection.DeleteMany(context.Background(), bson.D{{}})
 	if err != nil {
-		fmt.Errorf("error occurred when deleting records")
+		fmt.Println("error occurred when deleting records")
 	}
 	fmt.Println("Deleted", res.DeletedCount, "files")
 }
@@ -169,14 +179,18 @@ type LocationDetails struct {
 func getFromDb(w http.ResponseWriter, r *http.Request) {
 	var location LocationDetails
 	w.Header().Set("Content-Type", "application/json")
-	json.NewDecoder(r.Body).Decode(&location)
+	err := json.NewDecoder(r.Body).Decode(&location)
+	if err != nil {
+		fmt.Println("Error decoding the coordinates - warning")
+	}
+	defer r.Body.Close()
 	latitude := location.Lat
 	longitude := location.Lon
 	fmt.Println(latitude, longitude)
-	findOptions := options.FindOne()
 	updateApi(latitude, longitude)
+	findOptions := options.FindOne()
 	var res finalresponse
-	err := collection.FindOne(context.Background(), bson.M{"latitude": latitude, "longitude": longitude}, findOptions).Decode(&res)
+	err = collection.FindOne(context.Background(), bson.M{"latitude": latitude, "longitude": longitude}, findOptions).Decode(&res)
 	if err == mongo.ErrNoDocuments {
 		fmt.Println("call forwarding to api, since not found in database")
 		res = refreshDB()
@@ -192,10 +206,25 @@ func main() {
 	clientOptions := options.Client().ApplyURI(connectionString)
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
-		fmt.Errorf("error occurred during connection with database")
+		fmt.Println("error occurred during connection with database")
 	}
 	collection = client.Database(dbName).Collection(colName)
 	fmt.Println("Connection success!")
+	fmt.Println("indexing")
+	// create index
+	indexModel := mongo.IndexModel{
+		Keys: bson.D{
+			bson.E{Key: "latitude", Value: 1},  // ascending order
+			bson.E{Key: "longitude", Value: 1}, // ascending order
+		}, Options: options.Index().SetUnique(true),
+	}
+	_, err = collection.Indexes().CreateOne(context.Background(), indexModel)
+	// deleteAllRecords()
+	if err != nil {
+		fmt.Println("indexing error occurred", err)
+	} else {
+		fmt.Println("indexing complete")
+	}
 	go autoupdatedb() // auto update db as per time
 	router := Router()
 	http.ListenAndServe(":4000", router)
