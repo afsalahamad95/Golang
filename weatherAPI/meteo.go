@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -18,7 +19,6 @@ import (
 
 var api string = "https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,visibility,wind_speed_10m"
 
-const connectionString = "mongodb+srv://afsal:afsal12345@weatherapi.7xuwg.mongodb.net/?retryWrites=true&w=majority&appName=weatherAPI"
 const dbName = "weather"
 const colName = "weatherdata"
 
@@ -97,7 +97,19 @@ func Router() *mux.Router {
 	router.HandleFunc("/", getFromDb)
 	return router
 }
+func viperEnv(key string) string {
+	viper.SetConfigFile(".env")
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Println("Error while reading the configuration file")
+	}
 
+	value, ok := viper.Get(key).(string)
+	if !ok {
+		log.Println("invalid configuration assertion")
+	}
+	return value
+}
 func refreshDB(city string, latitude string, longitude string) finalresponse {
 	if city == "" || latitude == "" || longitude == "" {
 		log.Println("empty fields detected in refresh")
@@ -220,6 +232,7 @@ func getFromDb(w http.ResponseWriter, r *http.Request) {
 func main() {
 	// let's connect to mongodb
 	fmt.Println("Connecting to MongoDB")
+	connectionString := viperEnv("CONNECTION_STRING")
 	clientOptions := options.Client().ApplyURI(connectionString)
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {

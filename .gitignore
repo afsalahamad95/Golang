@@ -1,1 +1,2 @@
 ./lcoserver/webserver/node_modules
+./weatherAPI/.env
