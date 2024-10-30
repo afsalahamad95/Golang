@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math"
+	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -55,8 +55,8 @@ type THourly_units struct {
 }
 
 type apiresponse struct {
-	Latitude             float64       `json:"latitude"`
-	Longitude            float64       `json:"longitude"`
+	Latitude             string        `json:"latitude"`
+	Longitude            string        `json:"longitude"`
 	GenerationtimeMs     float64       `json:"generationtime_ms"`
 	UtcOffsetSeconds     int           `json:"utc_offset_seconds"`
 	Timezone             string        `json:"timezone"`
@@ -68,8 +68,8 @@ type apiresponse struct {
 	Hourly               HourlyData    `json:"hourly"`
 }
 type finalresponse struct {
-	Latitude             float64       `json:"latitude" bson:"latitude"`
-	Longitude            float64       `json:"longitude" bson:"longitude"`
+	Latitude             string        `json:"latitude" bson:"latitude"`
+	Longitude            string        `json:"longitude" bson:"longitude"`
 	GenerationtimeMs     float64       `json:"generationtime_ms" bson:"generationtime_ms"`
 	UtcOffsetSeconds     int           `json:"utc_offset_seconds" bson:"utc_offset_seconds"`
 	Timezone             string        `json:"timezone" bson:"timezone"`
@@ -80,6 +80,7 @@ type finalresponse struct {
 	Hourly_units         THourly_units `json:"hourly_units" bson:"hourly_units"`
 	Hourly               HourlyData    `json:"hourly" bson:"hourly"`
 	RecordTime           time.Time     `json:"recordtime" bson:"recordtime"`
+	City                 string        `json:"city" bson:"city"`
 }
 type HourlyData struct {
 	Time               []string  `json:"time"`
@@ -97,7 +98,10 @@ func Router() *mux.Router {
 	return router
 }
 
-func refreshDB() finalresponse {
+func refreshDB(city string, latitude string, longitude string) finalresponse {
+	if city == "" || latitude == "" || longitude == "" {
+		log.Println("empty fields detected in refresh")
+	}
 	resp, err := http.Get(api)
 	if err != nil {
 		fmt.Println("an error occurred when fetching the data", err)
@@ -107,6 +111,10 @@ func refreshDB() finalresponse {
 	err = json.Unmarshal(parse, &Apiresponse)
 	fmt.Println("update starting")
 	FinalResponse := convertToFinalResponse(Apiresponse)
+	FinalResponse.City = city
+	FinalResponse.Latitude = latitude
+	FinalResponse.Longitude = longitude
+	fmt.Println("checking", FinalResponse.Latitude, FinalResponse.Longitude)
 	insertRes := insertWeather(FinalResponse)
 	// fmt.Println(insertRes, "status from insertion")
 	fmt.Println("Writing to database")
@@ -128,6 +136,7 @@ func convertToFinalResponse(Apiresponse apiresponse) finalresponse {
 		Hourly_units:         Apiresponse.Hourly_units,
 		Hourly:               Apiresponse.Hourly,
 		RecordTime:           time.Now(),
+		City:                 "Coimbatore",
 	}
 }
 
@@ -140,9 +149,8 @@ func insertWeather(data finalresponse) finalresponse {
 		if mongo.IsDuplicateKeyError(err) {
 			fmt.Println("insert operation aborted due to duplicate entry, returning existing entry")
 			var existingRec finalresponse
-			search_lat := data.Latitude
-			search_lon := data.Longitude
-			err := collection.FindOne(context.Background(), bson.M{"latitude": search_lat, "longitude": search_lon}).Decode(existingRec)
+			search_city := data.City
+			err := collection.FindOne(context.Background(), bson.M{"city": search_city}).Decode(existingRec)
 			if err == nil {
 				return existingRec
 			}
@@ -160,21 +168,22 @@ func deleteAllRecords() {
 	}
 	fmt.Println("Deleted", res.DeletedCount, "files")
 }
-func autoupdatedb() {
+func autodeletedb() {
 	ticker := time.NewTicker(20 * time.Minute)
 	defer ticker.Stop()
 	for {
 		<-ticker.C
 		// non blocking ticker
-		refreshDB()
+		// refreshDB("Coimbatore", "11.0787684", "77.0370419")
 		deleteOldRecords()
-		fmt.Println("auto update triggered")
+		fmt.Println("auto delete triggered")
 	}
 }
 
 type LocationDetails struct {
-	Lat float64
-	Lon float64
+	Lat  string
+	Lon  string
+	City string
 }
 
 func getFromDb(w http.ResponseWriter, r *http.Request) {
@@ -182,24 +191,30 @@ func getFromDb(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	err := json.NewDecoder(r.Body).Decode(&location)
 	if err != nil {
-		fmt.Println("Error decoding the coordinates - warning")
+		log.Println("Error decoding the coordinates - warning")
 	}
 	defer r.Body.Close()
-	// round off to 3 decimal places
-	latitude := math.Round(location.Lat)
-	longitude := math.Round(location.Lon)
-	fmt.Println(latitude, longitude)
-	updateApi(latitude, longitude)
-	findOptions := options.FindOne()
-	var res finalresponse
-	err = collection.FindOne(context.Background(), bson.M{"latitude": latitude, "longitude": longitude}, findOptions).Decode(&res)
-	if err == mongo.ErrNoDocuments {
-		fmt.Println("call forwarding to api, since not found in database")
-		res = refreshDB()
+	latitude := location.Lat
+	longitude := location.Lon
+	city := location.City
+	if city == "" || latitude == "" || longitude == "" {
+		log.Println("empty fields detected")
+		json.NewEncoder(w).Encode("empty fields detected")
 	} else {
-		fmt.Println("found match in db")
+		fmt.Println("the city in query is:", city)
+		fmt.Println(latitude, longitude)
+		updateApi(latitude, longitude)
+		findOptions := options.FindOne()
+		var res finalresponse
+		err = collection.FindOne(context.Background(), bson.M{"city": city}, findOptions).Decode(&res)
+		if err == mongo.ErrNoDocuments {
+			fmt.Println("call forwarding to api, since not found in database")
+			res = refreshDB(city, latitude, longitude)
+		} else {
+			fmt.Println("found match in db")
+		}
+		json.NewEncoder(w).Encode(res)
 	}
-	json.NewEncoder(w).Encode(res)
 }
 
 func main() {
@@ -218,6 +233,7 @@ func main() {
 		Keys: bson.D{
 			bson.E{Key: "latitude", Value: 1},  // ascending order
 			bson.E{Key: "longitude", Value: 1}, // ascending order
+			bson.E{Key: "city", Value: 1},
 		}, Options: options.Index().SetUnique(true),
 	}
 	_, err = collection.Indexes().CreateOne(context.Background(), indexModel)
@@ -227,15 +243,15 @@ func main() {
 	} else {
 		fmt.Println("indexing complete")
 	}
-	go autoupdatedb() // auto update db as per time
+	go autodeletedb() // auto update db as per time
 	router := Router()
 	http.ListenAndServe(":4000", router)
 }
 
-func updateApi(a, b float64) {
+func updateApi(a, b string) {
 	// update api with new latitude and longitude
 	mut.Lock()
-	api = fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%f&longitude=%f&current=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,visibility,wind_speed_10m", a, b)
+	api = fmt.Sprintf("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s&current=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,weather_code,surface_pressure,visibility,wind_speed_10m", a, b)
 	mut.Unlock()
 }
 
