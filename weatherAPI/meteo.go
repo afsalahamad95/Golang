@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"net/http"
 	"sync"
 	"time"
@@ -184,8 +185,9 @@ func getFromDb(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Error decoding the coordinates - warning")
 	}
 	defer r.Body.Close()
-	latitude := location.Lat
-	longitude := location.Lon
+	// round off to 3 decimal places
+	latitude := math.Round(location.Lat)
+	longitude := math.Round(location.Lon)
 	fmt.Println(latitude, longitude)
 	updateApi(latitude, longitude)
 	findOptions := options.FindOne()
