@@ -162,7 +162,7 @@ func insertWeather(data finalresponse) finalresponse {
 			fmt.Println("insert operation aborted due to duplicate entry, returning existing entry")
 			var existingRec finalresponse
 			search_city := data.City
-			err := collection.FindOne(context.Background(), bson.M{"city": search_city}).Decode(existingRec)
+			err := collection.FindOne(context.Background(), bson.M{"city": search_city}).Decode(&existingRec)
 			if err == nil {
 				return existingRec
 			}
