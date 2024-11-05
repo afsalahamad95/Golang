@@ -92,6 +92,33 @@ func handleCallback(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println(userInfo)
 	json.NewEncoder(w).Encode("login success")
+
+	user_email := userInfo["email"]
+
+	type Result struct {
+		isAdmin bool
+	}
+
+	isAdminCheckUrl := fmt.Sprintf("https://admin.googleapis.com/admin/directory/v1/users/%s", user_email)
+	resp, err = client.Get(isAdminCheckUrl)
+	if err != nil {
+		fmt.Println("error occurred when checking details of user")
+		return
+	}
+	defer resp.Body.Close()
+	var res Result
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	if err != nil {
+		fmt.Println("error during the parse of the response body")
+		return
+	}
+
+	if res.isAdmin {
+		fmt.Println("the user is an admin")
+	} else {
+		fmt.Println("nah he's not an admin bruh!")
+	}
+
 }
 
 func main() {
