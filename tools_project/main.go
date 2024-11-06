@@ -13,18 +13,18 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type event_notification struct {
+type EventNotification struct {
 	Content string    `json:"content" bson:"content"`
 	Timings time.Time `json:"timings" bson:"timings"`
 }
 
-type leave_notification struct {
+type LeaveNotification struct {
 	Content string    `json:"content" bson:"content"`
 	Timings time.Time `json:"timings" bson:"timings"`
 	Author  string    `json:"author" bson:"author"`
 }
 
-type general_notification struct {
+type GeneralNotification struct {
 	Content string    `json:"content" bson:"content"`
 	Timings time.Time `json:"timings" bson:"timings"`
 	Author  string    `json:"author" bson:"author"`
@@ -61,7 +61,7 @@ func connect_mongo() {
 func addEventNotification(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 	defer r.Body.Close()
-	var res event_notification
+	var res EventNotification
 	err := json.NewDecoder(r.Body).Decode(&res)
 	if err != nil {
 		log.Println("error occurred while decoding the event notification")
@@ -69,7 +69,7 @@ func addEventNotification(w http.ResponseWriter, r *http.Request) {
 	content := res.Content
 	res.Timings = time.Now()
 	timings := res.Timings
-	notification := event_notification{Content: content, Timings: timings}
+	notification := EventNotification{Content: content, Timings: timings}
 	result, err := collection.InsertOne(context.Background(), notification)
 	if err != nil {
 		log.Println("an error occurred during the insertion of event data")
@@ -81,7 +81,7 @@ func addEventNotification(w http.ResponseWriter, r *http.Request) {
 
 func addLeaveNotification(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
-	var res leave_notification
+	var res LeaveNotification
 	error := json.NewDecoder(r.Body).Decode(&res)
 	defer r.Body.Close()
 	if error != nil {
@@ -91,7 +91,7 @@ func addLeaveNotification(w http.ResponseWriter, r *http.Request) {
 	timings := res.Timings
 	content := res.Content
 	author := res.Author
-	document := leave_notification{Content: content, Timings: timings, Author: author}
+	document := LeaveNotification{Content: content, Timings: timings, Author: author}
 	result, err := collection.InsertOne(context.Background(), document)
 	if err != nil {
 		log.Println("An error occurred during the insertion of leave data")
@@ -103,14 +103,14 @@ func addLeaveNotification(w http.ResponseWriter, r *http.Request) {
 
 func addGeneralNotification(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
-	var result general_notification
+	var result GeneralNotification
 	json.NewDecoder(r.Body).Decode(&result)
 	defer r.Body.Close()
 	result.Timings = time.Now()
 	timings := result.Timings
 	content := result.Content
 	author := result.Author
-	document := general_notification{Content: content, Timings: timings, Author: author}
+	document := GeneralNotification{Content: content, Timings: timings, Author: author}
 	res, err := collection.InsertOne(context.Background(), document)
 	if err != nil {
 		log.Println("An error occurred during the insertion of general notification")
