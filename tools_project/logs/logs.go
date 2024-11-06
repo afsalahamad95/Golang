@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -36,11 +37,24 @@ func insertLog(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res)
 }
 
-const connectionString = "mongodb://localhost:27017/"
-const dbname = "logs"
-const colname = "logdata"
+func viperAccess(key string) string {
+	viper.SetConfigFile("../.env")
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Println("error while trying to access the .env file")
+	}
+	res, ok := viper.Get(key).(string)
+	if !ok {
+		log.Println("invalid key config queried")
+	}
+	return res
+}
 
 func connect_mongo() {
+	connectionString := viperAccess("CONNECTION_STRING")
+	dbname := viperAccess("LOGS")
+	colname := viperAccess("LOGCOLLECTION")
+
 	clientOptions := options.Client().ApplyURI(connectionString)
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
