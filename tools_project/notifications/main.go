@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -16,6 +17,7 @@ import (
 type EventNotification struct {
 	Content string    `json:"content" bson:"content"`
 	Timings time.Time `json:"timings" bson:"timings"`
+	Author  string    `json:"author" bson:"author"`
 }
 
 type LeaveNotification struct {
@@ -31,7 +33,7 @@ type GeneralNotification struct {
 }
 
 func viperConfigure(key string) string {
-	viper.SetConfigFile(".env")
+	viper.SetConfigFile("../.env")
 	err := viper.ReadInConfig()
 	if err != nil {
 		log.Println("error reading the env file")
@@ -122,6 +124,19 @@ func addGeneralNotification(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	connect_mongo() // connect to the db
+	log.Println("indexing the database")
+	indexModel := mongo.IndexModel{
+		Keys: bson.D{
+			bson.E{Key: "Author", Value: 1},
+			bson.E{Key: "Content", Value: 1},
+			bson.E{Key: "Timings", Value: 1},
+		},
+	}
+	_, err := collection.Indexes().CreateOne(context.Background(), indexModel)
+	if err != nil {
+		log.Println("indexing error occurred")
+	}
+	log.Println("indexing complete")
 	router := mux.NewRouter()
 	router.HandleFunc("/insertGeneral", addGeneralNotification)
 	router.HandleFunc("/insertEvent", addEventNotification)
